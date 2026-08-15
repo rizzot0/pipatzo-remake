@@ -6,7 +6,9 @@ Autores: Bastian Guerra, Ian Fernandez, Max Malebran
 
 ## Demo pública
 
-El deploy gratis va a [Render](https://render.com) como un servicio Python (no Docker: el plan free no siempre acepta imágenes). Frontend y API quedan en la misma URL.
+**App:** https://pipatzo-remake.onrender.com/
+
+El deploy gratis va a [Render](https://render.com) como un servicio Python (no Docker: el plan free no siempre acepta imágenes). Frontend y API quedan en la misma URL. El servicio se duerme a los 15 minutos sin tráfico; el primer request tarda ~1 minuto.
 
 [Deploy to Render](https://render.com/deploy?repo=https://github.com/rizzot0/pipatzo-remake)
 
@@ -16,7 +18,7 @@ El deploy gratis va a [Render](https://render.com) como un servicio Python (no D
 4. Build: `bash scripts/render-build.sh`
 5. Start: `bash scripts/render-start.sh`
 
-El servicio se duerme a los 15 minutos sin tráfico; el primer request tarda ~1 minuto. Santiago es un grafo grande: el mapa se recorta y el cálculo puede tardar más. Coquimbo es la ciudad más liviana para probar.
+Santiago es un grafo grande: el mapa se recorta y el cálculo puede tardar más. Coquimbo es la ciudad más liviana para probar.
 
 ## Demo local (un solo proceso)
 
