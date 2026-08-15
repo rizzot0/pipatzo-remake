@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Polyline, useMap, useMapEvents } from "react-leaflet";
+import { CircleMarker, MapContainer, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import {
-  API_BASE,
   calcularRuta,
   fetchCiudades,
   fetchEstadisticas,
@@ -97,7 +96,7 @@ export function App() {
     try {
       const [stats, grafo] = await Promise.all([
         fetchEstadisticas(ciudadIdSeleccionada),
-        fetchGrafoCiudad(ciudadIdSeleccionada, 60000)
+        fetchGrafoCiudad(ciudadIdSeleccionada, 25000)
       ]);
 
       setCiudadIdCargada(ciudadIdSeleccionada);
@@ -208,10 +207,10 @@ export function App() {
     <div className="app-shell">
       <div className="background-glow" />
       <header className="hero">
-        <p className="eyebrow">PIPATZO Frontend MVP</p>
+        <p className="eyebrow">PIPATZO</p>
         <h1>Planificador de Rutas Urbanas</h1>
         <p>
-          API conectada en <span>{API_BASE}</span>. Carga un mapa, marca origen y destino con click y calcula la mejor ruta.
+          Carga un mapa, marca origen y destino con un click y calcula la mejor ruta sobre el grafo vial.
         </p>
       </header>
 
@@ -252,7 +251,13 @@ export function App() {
             </p>
           </div>
 
-          {grafoTruncado && (
+          {selectedCity?.nombre === "Santiago" && (
+            <p className="warning">
+              Santiago es un grafo grande: el mapa se recorta y el cálculo puede tardar más. Coquimbo es más liviano para probar.
+            </p>
+          )}
+
+          {grafoTruncado && selectedCity?.nombre !== "Santiago" && (
             <p className="warning">
               Mapa grande: se está mostrando una muestra de edges para mantener rendimiento.
             </p>
@@ -290,6 +295,10 @@ export function App() {
         <section className="panel map-panel">
           {ciudadIdCargada ? (
             <MapContainer key={ciudadIdCargada} center={mapCenter} zoom={13} scrollWheelZoom className="map">
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
               <FitBoundsEffect bounds={grafoBounds} />
               <MapClickPicker enabled={true} onPick={seleccionarNodoPorMapa} />
 

@@ -11,7 +11,9 @@ USO:
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, func
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import create_engine, event, func
 from sqlalchemy.orm import sessionmaker, Session, aliased
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
@@ -34,25 +36,41 @@ from scripts.migrate_to_sqlite import Base, Ciudad, Nodo, Edge, ConsultaRuta
 # SETUP
 # ============================================================================
 
-# Base de datos SQLite
-DB_PATH = BACKEND_DIR / "data" / "pipatzo.db"
+# Base de datos SQLite (el path se puede sobreescribir en deploy)
+DB_PATH = Path(os.getenv("PIPATZO_DB", str(BACKEND_DIR / "data" / "pipatzo.db")))
 DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
-engine = create_engine(DATABASE_URL, echo=False)
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    connect_args={"check_same_thread": False, "timeout": 30},
+)
 SessionLocal = sessionmaker(bind=engine)
+
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, _connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+# Grafo en memoria (tuplas, sin objetos ORM) para no recargar 300k edges por request.
+_GRAPH_CACHE: dict[int, dict] = {}
+
+FRONTEND_DIST = Path(
+    os.getenv("FRONTEND_DIST", str(BACKEND_DIR.parent / "frontend" / "dist"))
+)
 
 app = FastAPI(
     title="PIPATZO API",
-    description="Sistema de cálculo de rutas - Sin PostgreSQL, con SQLite",
+    description="Sistema de cálculo de rutas - SQLite Edition",
     version="1.0.0"
 )
 
-# CORS para frontend (evita '*' con credenciales, que falla en navegador)
+# En el demo one-box el frontend y la API son el mismo origen.
 FRONTEND_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        "FRONTEND_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
-    ).split(",")
+    for origin in os.getenv("FRONTEND_ORIGINS", "*").split(",")
     if origin.strip()
 ]
 ALLOW_CREDENTIALS = "*" not in FRONTEND_ORIGINS
@@ -105,6 +123,24 @@ class RutaResumenResponse(BaseModel):
 # ALGORITMO DIJKSTRA
 # ============================================================================
 
+def load_grafo(session: Session, ciudad_id: int):
+    cached = _GRAPH_CACHE.get(ciudad_id)
+    if cached is not None:
+        return cached
+
+    grafo = {}
+    rows = (
+        session.query(Edge.nodo_origen_id, Edge.nodo_destino_id, Edge.distancia)
+        .filter(Edge.ciudad_id == ciudad_id)
+        .all()
+    )
+    for origen_id, destino_id, distancia in rows:
+        grafo.setdefault(origen_id, []).append((destino_id, distancia))
+
+    _GRAPH_CACHE[ciudad_id] = grafo
+    return grafo
+
+
 def dijkstra_shortest_path(session: Session, ciudad_id: int, nodo_origen_id: int, nodo_destino_id: int):
     """
     Implementa Dijkstra para encontrar la ruta más corta
@@ -112,15 +148,7 @@ def dijkstra_shortest_path(session: Session, ciudad_id: int, nodo_origen_id: int
     Returns:
         (distancia_total, lista_de_nodos_ids)
     """
-    # 1. Cargar todos los edges de la ciudad
-    edges = session.query(Edge).filter(Edge.ciudad_id == ciudad_id).all()
-    
-    # 2. Construir grafo como diccionario de listas
-    grafo = {}
-    for edge in edges:
-        if edge.nodo_origen_id not in grafo:
-            grafo[edge.nodo_origen_id] = []
-        grafo[edge.nodo_origen_id].append((edge.nodo_destino_id, edge.distancia))
+    grafo = load_grafo(session, ciudad_id)
     
     # 3. Ejecutar Dijkstra
     # Incluir nodos que solo aparecen como destino para evitar KeyError.
@@ -231,17 +259,6 @@ def estimar_tiempo_min(distancia_m: float, velocidad_kmh: float = 35.0) -> float
 # ENDPOINTS
 # ============================================================================
 
-@app.get("/")
-def root():
-    """Endpoint raíz"""
-    return {
-        "nombre": "PIPATZO API",
-        "versión": "1.0.0",
-        "descripción": "Sistema de cálculo de rutas - SQLite Edition",
-        "docs": "/docs",
-        "base_datos": "SQLite (pipatzo.db) - SIN POSTGRESQL"
-    }
-
 @app.get("/api/ciudades", response_model=List[CiudadResponse])
 def listar_ciudades():
     """Lista todas las ciudades disponibles"""
@@ -279,7 +296,7 @@ def estadisticas_ciudad(ciudad_id: int):
 @app.get("/api/ciudades/{ciudad_id}/grafo")
 def grafo_ciudad(
     ciudad_id: int,
-    max_edges: int = Query(50000, ge=1000, le=400000)
+    max_edges: int = Query(25000, ge=1000, le=80000)
 ):
     """Entrega segmentos del grafo para dibujar el mapa propio de una ciudad."""
     session = SessionLocal()
@@ -495,27 +512,59 @@ def health_check():
     return {
         "status": "OK",
         "database": "SQLite",
-        "file": "pipatzo.db",
-        "cors_origins": FRONTEND_ORIGINS
+        "file": str(DB_PATH),
+        "frontend": (FRONTEND_DIST / "index.html").exists(),
+        "cors_origins": FRONTEND_ORIGINS,
     }
 
-# ============================================================================
-# MAIN
-# ============================================================================
+
+def _mount_frontend():
+    index = FRONTEND_DIST / "index.html"
+    if not index.exists():
+        @app.get("/")
+        def root():
+            return {
+                "nombre": "PIPATZO API",
+                "versión": "1.0.0",
+                "docs": "/docs",
+                "base_datos": "SQLite (pipatzo.db)",
+            }
+        return
+
+    assets = FRONTEND_DIST / "assets"
+    if assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets)), name="frontend-assets")
+
+    @app.get("/")
+    def spa_root():
+        return FileResponse(index)
+
+    @app.get("/{full_path:path}")
+    def spa_fallback(full_path: str):
+        if full_path.startswith(("api/", "docs", "redoc", "openapi.json", "health")):
+            raise HTTPException(status_code=404, detail="Not found")
+        candidate = FRONTEND_DIST / full_path
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+
+_mount_frontend()
 
 if __name__ == "__main__":
     import uvicorn
-    
-    print("\n" + "="*60)
+
+    port = int(os.getenv("PORT", "8000"))
+    print("\n" + "=" * 60)
     print("PIPATZO API - SQLite Edition")
-    print("="*60)
-    print("\n📚 Documentación interactiva: http://localhost:8000/docs")
-    print("📊 Base de datos: pipatzo.db (SQLite - archivo local)")
-    print("🚀 Iniciando servidor...\n")
-    
+    print("=" * 60)
+    print(f"\nDocs: http://localhost:{port}/docs")
+    print(f"DB: {DB_PATH}")
+    print("Iniciando servidor...\n")
+
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
-        log_level="info"
+        port=port,
+        log_level="info",
     )

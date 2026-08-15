@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: pipatzo
+    runtime: python
+    plan: free
+    buildCommand: bash scripts/render-build.sh
+    startCommand: bash scripts/render-start.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: PYTHONPATH
+        value: backend
+      - key: FRONTEND_DIST
+        value: frontend/dist

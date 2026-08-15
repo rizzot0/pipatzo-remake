@@ -1,0 +1,14 @@
+.git
+.gitignore
+**/.venv
+**/__pycache__
+**/*.pyc
+frontend/node_modules
+frontend/dist
+backend/data/mapas
+backend/legacy-java
+backend/docs
+backend/data/*.xml
+*.zip
+.dev-logs
+README.md
