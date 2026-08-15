@@ -1,0 +1,14 @@
+name: Public npm registry
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject LATAM Artifactory in lockfile
+        run: node frontend/scripts/assert-public-lock.cjs

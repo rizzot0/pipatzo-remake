@@ -16,7 +16,7 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 cd frontend
-printf 'registry=https://registry.npmjs.org/\n' > .npmrc
+node ./scripts/assert-public-lock.cjs
 npm install --registry https://registry.npmjs.org/
 npm run build
 cd ..

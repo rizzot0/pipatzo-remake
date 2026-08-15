@@ -1,6 +1,8 @@
 FROM node:22-alpine AS frontend
 WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
+ENV npm_config_registry=https://registry.npmjs.org/
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+COPY frontend/scripts/assert-public-lock.cjs ./scripts/assert-public-lock.cjs
 RUN npm install --registry https://registry.npmjs.org
 COPY frontend/ ./
 RUN npm run build

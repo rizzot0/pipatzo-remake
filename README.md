@@ -45,6 +45,8 @@ Abre http://localhost:8000
 
 ## Desarrollo (frontend y API separados)
 
+Este repo **no usa el Artifactory de LATAM**. npm queda fijado a `https://registry.npmjs.org/` en `.npmrc` (raíz y `frontend/`). Si `package-lock.json` vuelve a apuntar a `appslatam`, `npm install` y el build de Render fallan a propósito.
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev-up.ps1
 ```
