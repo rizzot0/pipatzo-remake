@@ -207,8 +207,8 @@ export function App() {
     <div className="app-shell">
       <div className="background-glow" />
       <header className="hero">
-        <p className="eyebrow">PIPATZO</p>
-        <h1>Planificador de Rutas Urbanas</h1>
+        <p className="eyebrow">Ruteo vial</p>
+        <h1>Ruta Urbana</h1>
         <p>
           Carga un mapa, marca origen y destino con un click y calcula la mejor ruta sobre el grafo vial.
         </p>

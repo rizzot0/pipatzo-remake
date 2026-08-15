@@ -1,4 +1,4 @@
-# PIPATZO
+# Ruta Urbana
 
 Planificador de rutas urbanas. Backend FastAPI + SQLite (Dijkstra) y frontend React + Leaflet, servidos juntos.
 

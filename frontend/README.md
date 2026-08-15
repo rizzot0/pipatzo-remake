@@ -1,6 +1,6 @@
-# PIPATZO Frontend MVP
+# Frontend de Ruta Urbana
 
-Interfaz React + Leaflet para consumir la API FastAPI de PIPATZO.
+Interfaz React + Leaflet para cargar un mapa de ciudad y calcular la mejor ruta.
 
 ## Requisitos
 
