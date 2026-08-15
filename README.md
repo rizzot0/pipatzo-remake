@@ -1,4 +1,4 @@
-# Ruta Urbana
+# Plan Vial
 
 Planificador de rutas urbanas. Backend FastAPI + SQLite (Dijkstra) y frontend React + Leaflet, servidos juntos.
 
@@ -6,7 +6,7 @@ Autores: Bastian Guerra, Ian Fernandez, Max Malebran
 
 ## Demo pública
 
-**App:** https://pipatzo-remake.onrender.com/
+**App:** https://planvial.onrender.com/
 
 El deploy gratis va a [Render](https://render.com) como un servicio Python (no Docker: el plan free no siempre acepta imágenes). Frontend y API quedan en la misma URL. El servicio se duerme a los 15 minutos sin tráfico; el primer request tarda ~1 minuto.
 

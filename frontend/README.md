@@ -1,4 +1,4 @@
-# Frontend de Ruta Urbana
+# Frontend de Plan Vial
 
 Interfaz React + Leaflet para cargar un mapa de ciudad y calcular la mejor ruta.
 

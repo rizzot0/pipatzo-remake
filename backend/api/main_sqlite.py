@@ -62,7 +62,7 @@ FRONTEND_DIST = Path(
 )
 
 app = FastAPI(
-    title="Ruta Urbana API",
+    title="Plan Vial API",
     description="Cálculo de rutas urbanas sobre grafo vial (SQLite + Dijkstra)",
     version="1.0.0"
 )
@@ -524,7 +524,7 @@ def _mount_frontend():
         @app.get("/")
         def root():
             return {
-                "nombre": "Ruta Urbana API",
+                "nombre": "Plan Vial API",
                 "versión": "1.0.0",
                 "docs": "/docs",
                 "base_datos": "SQLite (pipatzo.db)",
@@ -556,7 +556,7 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", "8000"))
     print("\n" + "=" * 60)
-    print("Ruta Urbana API")
+    print("Plan Vial API")
     print("=" * 60)
     print(f"\nDocs: http://localhost:{port}/docs")
     print(f"DB: {DB_PATH}")

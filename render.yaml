@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: pipatzo
+    name: planvial
     runtime: python
     plan: free
     buildCommand: bash scripts/render-build.sh
