@@ -13,3 +13,5 @@ services:
         value: backend
       - key: FRONTEND_DIST
         value: frontend/dist
+      - key: JWT_SECRET
+        generateValue: true

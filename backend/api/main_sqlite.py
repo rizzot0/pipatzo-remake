@@ -17,9 +17,9 @@ from sqlalchemy import create_engine, event, func
 from sqlalchemy.orm import sessionmaker, Session, aliased
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
+from contextlib import asynccontextmanager
 import time
 import heapq
-from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 import os
 from pathlib import Path
@@ -31,6 +31,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from scripts.migrate_to_sqlite import Base, Ciudad, Nodo, Edge, ConsultaRuta
+from api.saas import SAAS_BACKEND, init_saas_db, router as saas_router
 
 # ============================================================================
 # SETUP
@@ -61,10 +62,18 @@ FRONTEND_DIST = Path(
     os.getenv("FRONTEND_DIST", str(BACKEND_DIR.parent / "frontend" / "dist"))
 )
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    init_saas_db()
+    yield
+
+
 app = FastAPI(
     title="Plan Vial API",
     description="Cálculo de rutas urbanas sobre grafo vial (SQLite + Dijkstra)",
-    version="1.0.0"
+    version="1.1.0",
+    lifespan=lifespan,
 )
 
 # En el demo one-box el frontend y la API son el mismo origen.
@@ -223,17 +232,6 @@ def calcular_ruta_core(session: Session, ciudad_id: int, nodo_origen_id: int, no
     if not ruta_ids:
         raise HTTPException(status_code=404, detail="No hay ruta disponible entre estos nodos")
 
-    consulta = ConsultaRuta(
-        ciudad_id=ciudad_id,
-        nodo_origen_id=nodo_origen_id,
-        nodo_destino_id=nodo_destino_id,
-        distancia_total=distancia_total,
-        tiempo_ejecucion_ms=tiempo_ejecucion_ms,
-        timestamp=datetime.now().isoformat()
-    )
-    session.add(consulta)
-    session.commit()
-
     return distancia_total, ruta_ids, tiempo_ejecucion_ms
 
 def build_ruta_nodos(session: Session, ruta_ids: List[int]) -> List[NodoResponse]:
@@ -254,6 +252,8 @@ def estimar_tiempo_min(distancia_m: float, velocidad_kmh: float = 35.0) -> float
     if velocidad_kmh <= 0:
         return 0.0
     return round((distancia_m / 1000.0) / velocidad_kmh * 60.0, 2)
+
+app.include_router(saas_router, prefix="/api")
 
 # ============================================================================
 # ENDPOINTS
@@ -513,6 +513,7 @@ def health_check():
         "status": "OK",
         "database": "SQLite",
         "file": str(DB_PATH),
+        "saas": SAAS_BACKEND,
         "frontend": (FRONTEND_DIST / "index.html").exists(),
         "cors_origins": FRONTEND_ORIGINS,
     }

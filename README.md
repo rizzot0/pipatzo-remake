@@ -8,7 +8,18 @@ Autores: Bastian Guerra, Ian Fernandez, Max Malebran
 
 **App:** https://planvial.onrender.com/
 
-El deploy gratis va a [Render](https://render.com) como un servicio Python (no Docker: el plan free no siempre acepta imágenes). Frontend y API quedan en la misma URL. El servicio se duerme a los 15 minutos sin tráfico; el primer request tarda ~1 minuto.
+- Mapa (sin cuenta): `/app`
+- Cuentas y rutas guardadas: `/registro` y `/rutas`
+- Link público de una ruta: `/r/:id`
+
+El mapa se puede usar como invitado. Las rutas guardadas viven en Postgres (`DATABASE_URL`, Neon u otro). Si no hay `DATABASE_URL`, se usa un SQLite local `backend/data/planvial_saas.db` (en Render Free ese archivo se pierde al dormir el servicio).
+
+El deploy gratis va a [Render](https://render.com) como un servicio Python. Variables:
+
+- `JWT_SECRET` — obligatorio en producción
+- `DATABASE_URL` — Postgres para cuentas y rutas (recomendado)
+
+El servicio se duerme a los 15 minutos sin tráfico; el primer request tarda ~1 minuto.
 
 [Deploy to Render](https://render.com/deploy?repo=https://github.com/rizzot0/pipatzo-remake)
 
